@@ -750,7 +750,7 @@ gh pr create --base main --head dev --title "feat: 배포 환경 구성"
 ## 프로젝트 구조
 
 ```
-Team-Project-Shop/
+Myshop/
 ├── backend/
 │   ├── src/main/java/com/example/backend/
 │   │   ├── controller/       # REST API 컨트롤러
