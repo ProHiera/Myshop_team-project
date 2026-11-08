@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError } from '@/utils/productImages'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -153,8 +154,9 @@ const MyOrdersPage = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Box
                           component="img"
-                          src={order.mainImgUrl || '/placeholder.jpg'}
+                          src={getProductImage(order.mainImgUrl, order.title)}
                           alt={order.title}
+                          onError={(event) => handleProductImageError(event, order.title)}
                           sx={{
                             width: 60,
                             height: 60,
@@ -235,8 +237,9 @@ const MyOrdersPage = () => {
                 >
                   <Box
                     component="img"
-                    src={item.main_img_url || '/placeholder.jpg'}
+                    src={getProductImage(item.main_img_url, item.title)}
                     alt={item.title}
+                    onError={(event) => handleProductImageError(event, item.title)}
                     sx={{
                       width: 60,
                       height: 60,

@@ -26,6 +26,8 @@ import { fetchActiveBanners, type Banner } from '@/api/bannerApi'
 import { useAiRecommend, type AiRecommendWithProduct } from '@/hooks/useAiRecommend'
 import type { ProductSummary } from '@/types/product'
 import { glassmorphism } from '@/theme/tokens'
+import { getRecommendationSearchParams } from '@/utils/aiRecommendation'
+import { FASHION_IMAGES, getFashionImage, getProductImage, handleProductImageError, isProductReferenceImage } from '@/utils/productImages'
 
 // 히어로 섹션 캐러셀 카드 데이터 (회전용)
 // 좌측: 남성 (1-3), 우측: 여성 (4-6)
@@ -38,22 +40,22 @@ const carouselCards = [
   { id: 6, image: '/images/carousel-woman-3.jpg', title: 'CASUAL' },
 ]
 
-// 기본 배너 데이터 (DB에 배너가 없을 경우 폴백) - 크기 최적화 300x400
+// 기본 배너: 각 제목의 품목에 맞춰 고른 로컬 패션 사진
 const defaultBannerSlides = [
   [
-    { id: 1, image: '/images/banner-1.jpg', fallback: 'https://picsum.photos/id/400/300/400', label: '2025\n결 산\n빅세일', brand: 'vunque', title: '인기 브랜드 백팩 발매', subtitle: '분크', link: '/products?category=bag' },
-    { id: 2, image: '/images/banner-2.jpg', fallback: 'https://picsum.photos/id/401/300/400', label: '2025\n결 산\n빅세일', brand: '', title: '잡화 브랜드데이 최대 25% 쿠폰', subtitle: '락피쉬웨더웨어, 도씨 외', link: '/products?category=shoes' },
-    { id: 3, image: '/images/banner-3.jpg', fallback: 'https://picsum.photos/id/402/300/400', label: '2025\n결 산\n빅세일', brand: 'Poète', title: '25 겨울 발매 최대 10% 할인', subtitle: '포에트서울', link: '/products?category=knit' },
+    { id: 1, image: FASHION_IMAGES.backpack, fallback: FASHION_IMAGES.backpack, label: 'DAILY\nBAG', brand: 'BACKPACK', title: '블랙 데일리 백팩', subtitle: '가볍게 완성하는 데일리룩', link: '/products?category=BAGS' },
+    { id: 2, image: FASHION_IMAGES.sneakers, fallback: FASHION_IMAGES.sneakers, label: 'DAILY\nSHOES', brand: 'SNEAKERS', title: '화이트 스니커즈', subtitle: '매일 신기 좋은 클래식 스타일', link: '/products?category=SHOES' },
+    { id: 3, image: FASHION_IMAGES.sweater, fallback: FASHION_IMAGES.sweater, label: 'SOFT\nKNIT', brand: 'KNITWEAR', title: '베이지 라운드 니트', subtitle: '부드러운 컬러의 니트웨어', link: '/products?middleCategory=TOP&searchTerm=니트' },
   ],
   [
-    { id: 4, image: '/images/banner-4.jpg', fallback: 'https://picsum.photos/id/403/300/400', label: 'WINTER\nSALE', brand: 'NIKE', title: '나이키 윈터 컬렉션', subtitle: '최대 40% 할인', link: '/products?brand=nike' },
-    { id: 5, image: '/images/banner-5.jpg', fallback: 'https://picsum.photos/id/404/300/400', label: 'NEW\nARRIVAL', brand: 'ADIDAS', title: '아디다스 신상품 입고', subtitle: '한정 수량 특가', link: '/products?brand=adidas' },
-    { id: 6, image: '/images/banner-6.jpg', fallback: 'https://picsum.photos/id/405/300/400', label: 'BEST\nITEM', brand: 'ZARA', title: '자라 베스트 아이템', subtitle: '이번 주 인기상품', link: '/products?brand=zara' },
+    { id: 4, image: FASHION_IMAGES.hoodie, fallback: FASHION_IMAGES.hoodie, label: 'CASUAL\nESSENTIAL', brand: 'HOODIE', title: '화이트 데일리 후디', subtitle: '편안한 실루엣의 캐주얼웨어', link: '/products?middleCategory=TOP&searchTerm=후드' },
+    { id: 5, image: FASHION_IMAGES.jacket, fallback: FASHION_IMAGES.jacket, label: 'LEATHER\nSTYLE', brand: 'JACKET', title: '브라운 레더 재킷', subtitle: '스타일에 깊이를 더하는 아우터', link: '/products?middleCategory=OUTER&searchTerm=재킷' },
+    { id: 6, image: FASHION_IMAGES.shirt, fallback: FASHION_IMAGES.shirt, label: 'CLEAN\nSTYLE', brand: 'SHIRT', title: '화이트 클래식 셔츠', subtitle: '깔끔하게 완성하는 데일리 스타일', link: '/products?middleCategory=TOP&searchTerm=셔츠' },
   ],
   [
-    { id: 7, image: '/images/banner-7.jpg', fallback: 'https://picsum.photos/id/406/300/400', label: 'PREMIUM\nBRAND', brand: 'GUCCI', title: '프리미엄 브랜드 특가', subtitle: '명품 최대 30% 할인', link: '/products?category=premium' },
-    { id: 8, image: '/images/banner-8.jpg', fallback: 'https://picsum.photos/id/407/300/400', label: 'OUTER\nFESTIVAL', brand: 'MONCLER', title: '아우터 페스티벌', subtitle: '겨울 필수템 모음', link: '/products?category=outer' },
-    { id: 9, image: '/images/banner-9.jpg', fallback: 'https://picsum.photos/id/408/300/400', label: 'STREET\nWEAR', brand: 'SUPREME', title: '스트릿 웨어 특집', subtitle: '힙한 스타일링', link: '/products?category=street' },
+    { id: 7, image: FASHION_IMAGES.dress, fallback: FASHION_IMAGES.dress, label: 'SOFT\nSILHOUETTE', brand: 'DRESS', title: '베이지 롱 원피스', subtitle: '차분한 컬러와 여유로운 실루엣', link: '/products?middleCategory=DRESS' },
+    { id: 8, image: FASHION_IMAGES.coat, fallback: FASHION_IMAGES.coat, label: 'OUTER\nCOLLECTION', brand: 'COAT', title: '카키 롱 코트', subtitle: '레이어드하기 좋은 롱 아우터', link: '/products?middleCategory=OUTER&searchTerm=코트' },
+    { id: 9, image: FASHION_IMAGES.jeans, fallback: FASHION_IMAGES.jeans, label: 'DENIM\nEDIT', brand: 'DENIM', title: '데일리 데님 컬렉션', subtitle: '다양한 워싱으로 완성하는 캐주얼룩', link: '/products?middleCategory=BOTTOM&searchTerm=데님' },
   ],
 ]
 
@@ -75,8 +77,8 @@ const convertBannersToSlides = (banners: Banner[]) => {
   for (let i = 0; i < banners.length; i += 3) {
     const group = banners.slice(i, i + 3).map((banner) => ({
       id: banner.id,
-      image: banner.imageUrl,
-      fallback: `https://picsum.photos/id/${400 + banner.id}/300/400`,
+      image: getProductImage(banner.imageUrl, banner.title),
+      fallback: getFashionImage(banner.title),
       label: '',
       brand: '',
       title: banner.title,
@@ -87,18 +89,6 @@ const convertBannersToSlides = (banners: Banner[]) => {
   }
 
   return slides
-}
-
-// 상품 이미지 - picsum (크기 최적화: 200x250으로 축소, webp 자동 포맷)
-const FASHION_IMAGES = {
-  hoodie: 'https://picsum.photos/id/96/200/250',
-  sweater: 'https://picsum.photos/id/103/200/250',
-  trousers: 'https://picsum.photos/id/119/200/250',
-  tshirt: 'https://picsum.photos/id/129/200/250',
-  dress: 'https://picsum.photos/id/145/200/250',
-  jacket: 'https://picsum.photos/id/157/200/250',
-  coat: 'https://picsum.photos/id/164/200/250',
-  shirt: 'https://picsum.photos/id/177/200/250',
 }
 
 const HomePage = () => {
@@ -136,7 +126,7 @@ const HomePage = () => {
     product: null,
     aiResult: null
   })
-  const { getRecommendation, loading: isAiLoading, error: aiError } = useAiRecommend()
+  const { getRecommendation, loading: isAiLoading } = useAiRecommend()
 
   // GSAP 애니메이션
   useEffect(() => {
@@ -310,13 +300,13 @@ const HomePage = () => {
         const response = await fetchItems({ page: 0, size: 24 })
         // 재고가 0인 상품은 필터링하여 표시하지 않음 (판매중지 상품)
         const availableItems = (response.content || []).filter((item: ItemSummary) => (item.stock ?? 1) > 0)
-        const mapped: ProductSummary[] = availableItems.slice(0, 20).map((item: ItemSummary, index: number) => ({
+        const mapped: ProductSummary[] = availableItems.slice(0, 20).map((item: ItemSummary) => ({
           id: item.id,
           title: item.title,
           brand: item.brand || 'MyShop',
           price: item.price,
           discountPercent: item.discountPercent,
-          mainImage: item.mainImageUrl || Object.values(FASHION_IMAGES)[index % 8],
+          mainImage: getProductImage(item.mainImageUrl, item.title),
         }))
         setProducts(mapped)
       } catch (err) {
@@ -334,49 +324,22 @@ const HomePage = () => {
 
     try {
       const result = await getRecommendation(aiPrompt)
-
-      if (result) {
-        // 매칭된 상품이 있으면 미리보기 다이얼로그 표시
-        if (result.matchedProduct) {
-          setProductPreview({
-            open: true,
-            product: result.matchedProduct,
-            aiResult: result
-          })
-        } else {
-          // 매칭된 상품이 없으면 바로 검색 결과로 이동
-          const searchParams = new URLSearchParams()
-          searchParams.set('ai', encodeURIComponent(aiPrompt))
-          if (result.keywords.length > 0) {
-            searchParams.set('keywords', result.keywords.join(','))
-          }
-          if (result.category) {
-            searchParams.set('category', result.category)
-          }
-
-          setSnackbar({
-            open: true,
-            message: result.description || 'AI 추천이 완료되었습니다!',
-            severity: 'success'
-          })
-
-          setTimeout(() => {
-            navigate(`/products?${searchParams.toString()}`)
-          }, 1000)
-        }
+      if (result.matchedProduct) {
+        setProductPreview({ open: true, product: result.matchedProduct, aiResult: result })
       } else {
-        // result가 null인 경우 (API 키 오류 등)
+        const searchParams = getRecommendationSearchParams(result)
         setSnackbar({
           open: true,
-          message: aiError || 'AI 서비스에 연결할 수 없습니다. API 키를 확인해주세요.',
-          severity: 'error'
+          message: '추천 조건에 맞는 판매 중 상품을 찾지 못했습니다. 검색 조건을 확인해 주세요.',
+          severity: 'error',
         })
+        navigate(`/products?${searchParams.toString()}`)
       }
-    } catch {
+    } catch (error) {
       setSnackbar({
         open: true,
-        message: 'AI 추천 중 오류가 발생했습니다. 다시 시도해주세요.',
-        severity: 'error'
+        message: error instanceof Error ? error.message : 'AI 추천 중 오류가 발생했습니다. 다시 시도해주세요.',
+        severity: 'error',
       })
     }
   }
@@ -392,14 +355,9 @@ const HomePage = () => {
   // 미리보기 닫고 검색 결과로 이동
   const handleGoToSearch = () => {
     if (productPreview.aiResult) {
-      const searchParams = new URLSearchParams()
-      searchParams.set('ai', encodeURIComponent(aiPrompt))
-      if (productPreview.aiResult.keywords.length > 0) {
-        searchParams.set('keywords', productPreview.aiResult.keywords.join(','))
-      }
-      if (productPreview.aiResult.category) {
-        searchParams.set('category', productPreview.aiResult.category)
-      }
+      const searchParams = getRecommendationSearchParams(
+        productPreview.aiResult, productPreview.product?.title,
+      )
       setProductPreview({ open: false, product: null, aiResult: null })
       navigate(`/products?${searchParams.toString()}`)
     }
@@ -895,7 +853,7 @@ const HomePage = () => {
             }}
           >
             {[
-              { icon: AcUnit, label: '겨울 컬렉션', path: '/products?category=outer' },
+              { icon: AcUnit, label: '겨울 컬렉션', path: '/products?middleCategory=OUTER' },
               { icon: LocalOffer, label: '특가', path: '/products?sort=sale' },
               { icon: Explore, label: '신상품', path: '/products?sort=new' },
               { icon: LocalMall, label: '베스트', path: '/products?sort=best' },
@@ -1178,7 +1136,7 @@ const HomePage = () => {
           <Grid item xs={12} md={6}>
             <Box
               component={Link}
-              to="/products?category=outer"
+              to="/products?middleCategory=OUTER"
               sx={{
                 display: 'block',
                 position: 'relative',
@@ -1191,7 +1149,7 @@ const HomePage = () => {
             >
               <Box
                 component="img"
-                src="https://picsum.photos/id/252/400/300"
+                src={FASHION_IMAGES.coat}
                 alt="Outer"
                 loading="lazy"
                 sx={{
@@ -1213,13 +1171,13 @@ const HomePage = () => {
               />
               <Box sx={{ position: 'absolute', bottom: 30, left: 30, color: 'white' }}>
                 <Typography sx={{ fontSize: '0.85rem', opacity: 0.8, mb: 1, letterSpacing: '0.1em' }}>
-                  WINTER ESSENTIAL
+                  LAYERED ESSENTIAL
                 </Typography>
                 <Typography sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', md: '2rem' } }}>
                   OUTER COLLECTION
                 </Typography>
                 <Typography sx={{ fontSize: '0.95rem', opacity: 0.9, mt: 1 }}>
-                  겨울을 따뜻하게, 스타일은 멋지게
+                  카키 코트로 완성하는 레이어드 스타일
                 </Typography>
               </Box>
             </Box>
@@ -1228,7 +1186,7 @@ const HomePage = () => {
             <Stack spacing={3} sx={{ height: '100%' }}>
               <Box
                 component={Link}
-                to="/products?category=knit"
+                to="/products?middleCategory=TOP&searchTerm=니트"
                 sx={{
                   display: 'block',
                   position: 'relative',
@@ -1241,7 +1199,7 @@ const HomePage = () => {
               >
                 <Box
                   component="img"
-                  src="https://picsum.photos/id/256/400/200"
+                  src={FASHION_IMAGES.sweater}
                   alt="Knit"
                   loading="lazy"
                   sx={{
@@ -1266,13 +1224,13 @@ const HomePage = () => {
                     KNIT & SWEATER
                   </Typography>
                   <Typography sx={{ fontSize: '0.85rem', opacity: 0.9, mt: 0.5 }}>
-                    포근한 니트웨어
+                    베이지 라운드넥 니트웨어
                   </Typography>
                 </Box>
               </Box>
               <Box
                 component={Link}
-                to="/products?category=bottom"
+                to="/products?middleCategory=BOTTOM"
                 sx={{
                   display: 'block',
                   position: 'relative',
@@ -1285,7 +1243,7 @@ const HomePage = () => {
               >
                 <Box
                   component="img"
-                  src="https://picsum.photos/id/274/400/200"
+                  src={FASHION_IMAGES.trousers}
                   alt="Bottom"
                   loading="lazy"
                   sx={{
@@ -1307,10 +1265,10 @@ const HomePage = () => {
                 />
                 <Box sx={{ position: 'absolute', top: '50%', left: 25, transform: 'translateY(-50%)', color: 'white' }}>
                   <Typography sx={{ fontWeight: 700, fontSize: { xs: '1.2rem', md: '1.5rem' } }}>
-                    PANTS & SKIRTS
+                    PANTS COLLECTION
                   </Typography>
                   <Typography sx={{ fontSize: '0.85rem', opacity: 0.9, mt: 0.5 }}>
-                    데일리 하의 컬렉션
+                    베이지 데일리 팬츠
                   </Typography>
                 </Box>
               </Box>
@@ -1543,9 +1501,9 @@ const HomePage = () => {
         </Box>
         <Grid container spacing={2}>
           {[
-            { title: 'PREMIUM', desc: '프리미엄 브랜드', img: 'https://picsum.photos/id/342/300/200' },
-            { title: 'DESIGNER', desc: '디자이너 컬렉션', img: 'https://picsum.photos/id/357/300/200' },
-            { title: 'LIFESTYLE', desc: '라이프스타일', img: 'https://picsum.photos/id/367/300/200' },
+            { title: 'OUTER', desc: '카키 롱 코트', img: FASHION_IMAGES.coat },
+            { title: 'DRESS', desc: '베이지 롱 원피스', img: FASHION_IMAGES.dress },
+            { title: 'SHIRT', desc: '화이트 클래식 셔츠', img: FASHION_IMAGES.shirt },
           ].map((item, index) => (
             <Grid item xs={12} sm={4} key={index}>
               <Box
@@ -1630,7 +1588,7 @@ const HomePage = () => {
               >
                 <Box
                   component="img"
-                  src={productPreview.product.mainImage || 'https://picsum.photos/400/500'}
+                  src={getProductImage(productPreview.product.mainImage, productPreview.product.title)}
                   alt={productPreview.product.title}
                   sx={{
                     width: '100%',
@@ -1638,9 +1596,14 @@ const HomePage = () => {
                     objectFit: 'cover',
                   }}
                   onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                    e.currentTarget.src = 'https://picsum.photos/400/500'
+                    handleProductImageError(e, productPreview.product!.title)
                   }}
                 />
+                {isProductReferenceImage(productPreview.product.mainImage, productPreview.product.title) && (
+                  <Typography sx={{ position: 'absolute', bottom: 12, left: 12, px: 1, py: 0.5, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.9)', color: '#666', fontSize: '0.75rem' }}>
+                    품목 참고 이미지
+                  </Typography>
+                )}
                 {/* AI 추천 배지 */}
                 <Box
                   sx={{

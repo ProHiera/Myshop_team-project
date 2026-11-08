@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError, isProductReferenceImage } from '@/utils/productImages'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import gsap from 'gsap'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -27,10 +28,11 @@ import {
   LocalShipping,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
-import { fetchItemDetail, toggleFavoriteItem } from '@/api/itemApi'
+import { fetchItemDetail, fetchItems, toggleFavoriteItem } from '@/api/itemApi'
+import ProductCard from '@/components/common/ProductCard'
 import { useCart } from '@/hooks/useCart'
 import ReviewSection from '@/components/review/ReviewSection'
-import type { ItemDetail, ReviewListItem } from '@/types/api'
+import type { ItemDetail, ItemSummary, ReviewListItem } from '@/types/api'
 import { COLORS, type ColorKey } from '@/types/colors'
 
 interface TabPanelProps {
@@ -58,6 +60,7 @@ const ProductDetailPage = () => {
 
   // 상품 상세 데이터
   const [product, setProduct] = useState<ItemDetail | null>(null)
+  const [relatedProducts, setRelatedProducts] = useState<ItemSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -118,6 +121,26 @@ const ProductDetailPage = () => {
   useEffect(() => {
     loadProduct()
   }, [loadProduct])
+
+  useEffect(() => {
+    let active = true
+    setRelatedProducts([])
+    if (!product) return
+
+    fetchItems({ page: 0, size: 5, searchField: 'brand', searchTerm: product.brand || undefined })
+      .then((response) => {
+        if (active) {
+          setRelatedProducts((response.content || [])
+            .filter((item) => item.id !== product.id && (item.stock ?? 0) > 0)
+            .slice(0, 4))
+        }
+      })
+      .catch(() => {
+        if (active) setRelatedProducts([])
+      })
+
+    return () => { active = false }
+  }, [product])
 
   // GSAP 애니메이션
   useEffect(() => {
@@ -180,7 +203,7 @@ const ProductDetailPage = () => {
       const cartItem = {
         productId: id,
         productName: product.title,
-        productImage: product.imageList?.[0] || 'https://placehold.co/100x100/png',
+        productImage: getProductImage(product.imageList?.[0] || product.mainImageUrl, product.title),
         price: product.price ?? 0,
         quantity: quantity,
         color: selectedColor || undefined,
@@ -215,7 +238,7 @@ const ProductDetailPage = () => {
       const cartItem = {
         productId: id,
         productName: product.title,
-        productImage: product.imageList?.[0] || 'https://placehold.co/100x100/png',
+        productImage: getProductImage(product.imageList?.[0] || product.mainImageUrl, product.title),
         price: product.price ?? 0,
         quantity: quantity,
         color: selectedColor || undefined,
@@ -304,14 +327,20 @@ const ProductDetailPage = () => {
           >
             <Box
               component="img"
-              src={product.imageList?.[selectedImageIndex] || '/placeholder.jpg'}
+              src={getProductImage(product.imageList?.[selectedImageIndex] || product.mainImageUrl, product.title)}
               alt={product.title}
+              onError={(event) => handleProductImageError(event, product.title)}
               sx={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
               }}
             />
+            {isProductReferenceImage(product.imageList?.[selectedImageIndex] || product.mainImageUrl, product.title) && (
+              <Typography sx={{ position: 'absolute', bottom: 12, left: 12, px: 1, py: 0.5, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.9)', color: '#666', fontSize: '0.75rem' }}>
+                품목 참고 이미지
+              </Typography>
+            )}
             {/* 할인 뱃지 */}
             {discountPercent > 0 && (
               <Chip
@@ -349,8 +378,9 @@ const ProductDetailPage = () => {
               >
                 <Box
                   component="img"
-                  src={img}
+                  src={getProductImage(img, product.title)}
                   alt={`${product.title} ${index + 1}`}
+                  onError={(event) => handleProductImageError(event, product.title)}
                   sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </Box>
@@ -673,47 +703,28 @@ const ProductDetailPage = () => {
         </TabPanel>
       </Box>
 
-      {/* 연관 상품 영역 */}
-      <Box sx={{ mt: 8 }}>
-        <Typography variant="h5" fontWeight={700} gutterBottom>
-          이 상품과 비슷한 상품
-        </Typography>
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          {[1, 2, 3, 4].map((item) => (
-            <Grid item xs={6} sm={3} key={item}>
-              <Box
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  '&:hover': { boxShadow: 2 },
-                }}
-                onClick={() => navigate(`/products/${item}`)}
-              >
-                <Box
-                  component="img"
-                  src={`https://via.placeholder.com/300x300?text=Product+${item}`}
-                  alt={`연관 상품 ${item}`}
-                  sx={{ width: '100%', height: 200, objectFit: 'cover' }}
-                />
-                <Box sx={{ p: 2 }}>
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {product?.brand || 'Brand'}
-                  </Typography>
-                  <Typography fontWeight={600} noWrap>
-                    추천 상품 {item}
-                  </Typography>
-                  <Typography fontWeight={700} color="primary">
-                    {(Math.floor(Math.random() * 100) * 1000 + 10000).toLocaleString()}원
-                  </Typography>
-                </Box>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      {/* 실제 API 상품만 표시하며, 상품 목록을 읽을 수 없으면 생략합니다. */}
+      {relatedProducts.length > 0 && (
+        <Box sx={{ mt: 8 }}>
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            함께 둘러볼 상품
+          </Typography>
+          <Grid container spacing={3} sx={{ mt: 2 }}>
+            {relatedProducts.map((item) => (
+              <Grid item xs={6} sm={3} key={item.id}>
+                <ProductCard product={{
+                  id: item.id,
+                  title: item.title,
+                  brand: item.brand,
+                  price: item.price,
+                  discountPercent: item.discountPercent,
+                  mainImage: getProductImage(item.mainImageUrl, item.title),
+                }} />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
     </Container>
   )
 }

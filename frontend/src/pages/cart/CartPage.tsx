@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError } from '@/utils/productImages'
 import React, { useState, useEffect } from 'react'
 import {
   Box,
@@ -263,8 +264,9 @@ const CartPage: React.FC = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box
                               component="img"
-                              src={item.productImage}
+                              src={getProductImage(item.productImage, item.productName)}
                               alt={item.productName}
+                              onError={(event) => handleProductImageError(event, item.productName)}
                               sx={{
                                 width: 80,
                                 height: 80,
