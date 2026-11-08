@@ -7,23 +7,11 @@ import { useNavigate } from 'react-router-dom'
 import type { ProductSummary } from '@/types/product'
 import { useLike } from '@/hooks/useLike'
 import { brandColors, glassmorphism } from '@/theme/tokens'
+import { getProductImage, handleProductImageError, isProductReferenceImage } from '@/utils/productImages'
 
 interface ProductCardProps {
   product: ProductSummary
   compact?: boolean
-}
-
-// 이미지 로드 실패 시 fallback 처리
-const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-  e.currentTarget.src = '/placeholder.jpg'
-  e.currentTarget.onerror = null
-}
-
-// 이미지 URL 처리
-const getImageSrc = (url?: string): string => {
-  if (!url) return '/placeholder.jpg'
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  return url.startsWith('/') ? url : `/${url}`
 }
 
 const ProductCard = memo(({ product, compact = false }: ProductCardProps) => {
@@ -80,10 +68,15 @@ const ProductCard = memo(({ product, compact = false }: ProductCardProps) => {
             objectFit: 'cover',
             transition: 'transform 0.5s ease',
           }}
-          image={getImageSrc(product.mainImage)}
+          image={getProductImage(product.mainImage, product.title)}
           alt={product.title}
-          onError={handleImageError}
+          onError={(event) => handleProductImageError(event, product.title)}
         />
+        {isProductReferenceImage(product.mainImage, product.title) && (
+          <Typography sx={{ position: 'absolute', bottom: 8, left: 8, px: 0.75, py: 0.25, borderRadius: 0.5, bgcolor: 'rgba(255,255,255,0.9)', color: '#666', fontSize: '0.65rem' }}>
+            품목 참고 이미지
+          </Typography>
+        )}
         {product.badges && product.badges.length > 0 && (
           <Stack
             direction="row"

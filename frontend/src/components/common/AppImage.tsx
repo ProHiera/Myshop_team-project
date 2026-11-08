@@ -1,5 +1,6 @@
 import { useState, useCallback, type ImgHTMLAttributes } from 'react'
 import { Box, Skeleton } from '@mui/material'
+import { FASHION_IMAGES, getFashionImage, getProductImage } from '@/utils/productImages'
 
 /**
  * 이미지 URL 처리 유틸리티
@@ -8,7 +9,7 @@ import { Box, Skeleton } from '@mui/material'
  * - 상대경로 (uploads/...) → / 추가
  * - undefined/null/빈값 → fallback 이미지
  */
-export const getImageSrc = (url?: string | null, fallback = '/placeholder.jpg'): string => {
+export const getImageSrc = (url?: string | null, fallback = FASHION_IMAGES.clothing): string => {
   if (!url || url.trim() === '') return fallback
 
   // 절대 URL (http:// 또는 https://)
@@ -28,8 +29,8 @@ export const getImageSrc = (url?: string | null, fallback = '/placeholder.jpg'):
 /**
  * 기본 fallback 이미지 경로
  */
-export const DEFAULT_FALLBACK = '/placeholder.jpg'
-export const PRODUCT_FALLBACK = '/placeholder.jpg'
+export const DEFAULT_FALLBACK = FASHION_IMAGES.clothing
+export const PRODUCT_FALLBACK = FASHION_IMAGES.clothing
 export const USER_FALLBACK = '/avatar-placeholder.png'
 
 interface AppImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'onError' | 'src'> {
@@ -73,7 +74,10 @@ const AppImage = ({
   const [hasError, setHasError] = useState(false)
 
   // 실제 표시할 이미지 URL
-  const imageSrc = hasError ? fallback : getImageSrc(src, fallback)
+  const resolvedFallback = fallback === DEFAULT_FALLBACK ? getFashionImage(alt) : fallback
+  const imageSrc = hasError
+    ? resolvedFallback
+    : fallback === DEFAULT_FALLBACK ? getProductImage(src, alt) : getImageSrc(src, fallback)
 
   // 이미지 로드 완료
   const handleLoad = useCallback(() => {

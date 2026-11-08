@@ -1,3 +1,4 @@
+import { getProductImage } from '@/utils/productImages'
 import { useState, useEffect, useCallback } from 'react'
 import { fetchCartItems, toggleCartItem } from '@/api/itemApi'
 
@@ -125,7 +126,7 @@ export const useCart = () => {
       return (response.content || []).map((item: CartApiItem) => ({
         productId: String(item.id),
         productName: item.title || '상품명',
-        productImage: item.mainImageUrl || 'https://placehold.co/100x100/png',
+        productImage: getProductImage(item.mainImageUrl, item.title),
         price: item.price || 0,
         quantity: item.quantity || 1,
         option: item.option,

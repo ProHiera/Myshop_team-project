@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError } from '@/utils/productImages'
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
@@ -278,11 +279,11 @@ const AdminBannerPage: React.FC = () => {
                               <CardMedia
                                 component="img"
                                 height="200"
-                                image={banner.imageUrl}
+                                image={getProductImage(banner.imageUrl, banner.title)}
                                 alt={banner.title}
                                 sx={{ objectFit: 'cover' }}
                                 onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                  e.currentTarget.src = `https://placehold.co/400x200/f5f5f5/999?text=Banner+${globalIndex}`
+                                  handleProductImageError(e, banner.title)
                                 }}
                               />
                               {/* 순서 배지 */}
@@ -436,11 +437,11 @@ const AdminBannerPage: React.FC = () => {
                         <CardMedia
                           component="img"
                           height="150"
-                          image={banner.imageUrl}
+                          image={getProductImage(banner.imageUrl, banner.title)}
                           alt={banner.title}
                           sx={{ objectFit: 'cover' }}
                           onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                            e.currentTarget.src = 'https://placehold.co/400x150/f5f5f5/999?text=No+Image'
+                            handleProductImageError(e, banner.title)
                           }}
                         />
                         <Box

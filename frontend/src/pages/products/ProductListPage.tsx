@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError, isProductReferenceImage } from '@/utils/productImages'
 import {
   Box,
   Button,
@@ -23,7 +24,7 @@ import {
   Close as CloseIcon,
   Check as CheckIcon,
 } from '@mui/icons-material'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Pagination from '@/components/common/Pagination'
 import { fetchItems } from '@/api/itemApi'
@@ -130,6 +131,8 @@ const pageTitles: Record<string, { text: string }> = {
 const ProductListPage = () => {
   const [searchParams] = useSearchParams()
   const categoryParam = searchParams.get('category')
+  const majorCategoryParam = searchParams.get('majorCategory') || categoryParam
+  const middleCategoryParam = searchParams.get('middleCategory')
   const sortParam = searchParams.get('sort')
   const searchTerm = searchParams.get('searchTerm')
 
@@ -149,16 +152,19 @@ const ProductListPage = () => {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000])
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false)
+  const latestRequest = useRef(0)
 
   const itemsPerPage = 12
 
-  // URL의 category 파라미터로 mainCategory 동기화
+  // AI 추천 검색도 API와 동일한 major/middle category 필드를 사용합니다.
   useEffect(() => {
-    if (categoryParam && mainCategories.some(cat => cat.id === categoryParam)) {
-      setMainCategory(categoryParam)
-      setSubCategory('all')
-    }
-  }, [categoryParam])
+    setMainCategory(majorCategoryParam && mainCategories.some(cat => cat.id === majorCategoryParam)
+      ? majorCategoryParam : 'all')
+    const validMiddleCategory = Object.values(subCategories).some((categories) =>
+      categories.some((category) => category.id === middleCategoryParam))
+    setSubCategory(validMiddleCategory && middleCategoryParam ? middleCategoryParam : 'all')
+    setCurrentPage(1)
+  }, [majorCategoryParam, middleCategoryParam])
 
   // 현재 시간 표시
   const currentTime = new Date().toLocaleTimeString('ko-KR', {
@@ -183,6 +189,7 @@ const ProductListPage = () => {
   }
 
   const loadProducts = useCallback(async () => {
+    const requestId = ++latestRequest.current
     setLoading(true)
 
     try {
@@ -229,6 +236,7 @@ const ProductListPage = () => {
       }
 
       const response = await fetchItems(filterParams)
+      if (requestId !== latestRequest.current) return
 
       // 백엔드 응답 필드명: id, title, brand, price, discountPercent, realPrice, mainImageUrl, favorite, cart, stock
       // 재고가 0인 상품은 필터링하여 표시하지 않음 (판매중지 상품)
@@ -240,7 +248,7 @@ const ProductListPage = () => {
         brand: item.brand || '',
         price: item.price,
         discountPercent: item.discountPercent,
-        mainImage: item.mainImageUrl || 'https://placehold.co/400x500/png',
+        mainImage: getProductImage(item.mainImageUrl, item.title),
         favorite: item.favorite,
         cart: item.cart,
         reviewCount: item.reviewCount ?? 0,
@@ -252,11 +260,12 @@ const ProductListPage = () => {
       // 필터링된 상품 수를 반영 (전체 개수는 백엔드에서 오는 값 사용)
       setTotalCount(response.totalElements || 0)
     } catch (err) {
+      if (requestId !== latestRequest.current) return
       console.error('상품 목록 로드 실패:', err)
       setProducts([])
       setTotalCount(0)
     } finally {
-      setLoading(false)
+      if (requestId === latestRequest.current) setLoading(false)
     }
   }, [currentPage, sortBy, searchTerm, mainCategory, subCategory, selectedColors, selectedSizes, priceRange, showOnlyAvailable])
 
@@ -815,7 +824,7 @@ const ProductListPage = () => {
                         {/* 이미지 */}
                         <Box
                           component="img"
-                          src={product.mainImage}
+                          src={getProductImage(product.mainImage, product.title)}
                           alt={product.title}
                           loading="lazy"
                           sx={{
@@ -826,10 +835,15 @@ const ProductListPage = () => {
                             bgcolor: '#f5f5f5',
                           }}
                           onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                            e.currentTarget.src = 'https://placehold.co/400x500/png'
+                            handleProductImageError(e, product.title)
                           }}
                         />
 
+                        {isProductReferenceImage(product.mainImage, product.title) && (
+                          <Typography sx={{ position: 'absolute', bottom: 8, left: 8, px: 0.75, py: 0.25, borderRadius: 0.5, bgcolor: 'rgba(255,255,255,0.9)', color: '#666', fontSize: '0.65rem' }}>
+                            품목 참고 이미지
+                          </Typography>
+                        )}
                         {/* 장바구니에 있는 상품 표시 */}
                         {product.cart && (
                           <Box

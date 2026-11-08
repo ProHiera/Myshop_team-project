@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError, isProductReferenceImage } from '@/utils/productImages'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -305,12 +306,16 @@ const WishlistPage = () => {
                   <CardMedia
                     component="img"
                     height={200}
-                    image={item.mainImageUrl || '/placeholder.jpg'}
+                    image={getProductImage(item.mainImageUrl, item.title)}
                     alt={item.title}
+                    onError={(event) => handleProductImageError(event, item.title)}
                     onClick={() => navigate(`/products/${item.id}`)}
                     sx={{ cursor: 'pointer', objectFit: 'cover' }}
                   />
 
+                  {isProductReferenceImage(item.mainImageUrl, item.title) && (
+                    <Typography variant="caption" sx={{ color: '#666', px: 2, pt: 0.5 }}>품목 참고 이미지</Typography>
+                  )}
                   <CardContent sx={{ flexGrow: 1 }}>
                     {/* 브랜드 */}
                     {item.brand && (

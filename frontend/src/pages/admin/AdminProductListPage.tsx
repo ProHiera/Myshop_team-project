@@ -1,3 +1,4 @@
+import { getProductImage, handleProductImageError } from '@/utils/productImages'
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -196,21 +197,6 @@ interface ProductFormData {
   selectedColors: string[];
   status: 'active' | 'soldout';
 }
-
-// 이미지 URL 처리 유틸 함수
-const getImageSrc = (url?: string): string => {
-  if (!url) return '/placeholder.jpg';
-  // 절대 URL이면 그대로 사용
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  // 상대 경로면 백엔드 기본 URL 붙이기
-  return url.startsWith('/') ? url : `/${url}`;
-};
-
-// 이미지 로드 실패 시 fallback 처리
-const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-  e.currentTarget.src = '/placeholder.jpg';
-  e.currentTarget.onerror = null; // 무한 루프 방지
-};
 
 const AdminProductListPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -611,8 +597,8 @@ const AdminProductListPage: React.FC = () => {
                 <TableCell>
                   <Box
                     component="img"
-                    src={getImageSrc(product.imageUrl)}
-                    onError={handleImageError}
+                    src={getProductImage(product.imageUrl, product.name, product.category)}
+                    onError={(event) => handleProductImageError(event, product.name, product.category)}
                     alt={product.name}
                     sx={{
                       width: 50,
@@ -765,8 +751,8 @@ const AdminProductListPage: React.FC = () => {
                   </Typography>
                   <Box
                     component="img"
-                    src={getImageSrc(urlPreview)}
-                    onError={handleImageError}
+                    src={getProductImage(urlPreview, formData.name)}
+                    onError={(event) => handleProductImageError(event, formData.name)}
                     alt="미리보기"
                     sx={{
                       width: 150,

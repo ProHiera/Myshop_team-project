@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ai/proxy")
@@ -23,8 +25,13 @@ public class AiProxyController {
         try {
             AiProxyResponse response = aiProxyService.send(request);
             return ResponseController.success(response);
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of(
+                    "success", false,
+                    "message", e.getReason() == null ? "AI 서비스 요청에 실패했습니다." : e.getReason()
+            ));
         } catch (Exception e) {
-            return ResponseController.fail(e);
+            return ResponseController.fail("AI 서비스 요청을 처리하지 못했습니다.");
         }
     }
 }
